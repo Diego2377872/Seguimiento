@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Registro de Actividades</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2rem;
+      background-color: #f4f4f4;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background-color: white;
+    }
+
+    th, td {
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+
+    form {
+      margin-top: 2rem;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 5px;
+    }
+
+    input, button {
+      padding: 0.5rem;
+      margin: 0.5rem 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    button {
+      background-color: #007acc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #005f99;
+    }
+
+    .status {
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Registro de Actividades</h1>
+
+  <table id="actividadTable">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Institución</th>
+        <th>Actividad</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <form id="actividadForm">
+    <input type="date" id="fecha" required />
+    <input type="text" id="institucion" placeholder="Institución" required />
+    <input type="text" id="actividad" placeholder="Actividad" required />
+    <button type="submit">Guardar</button>
+  </form>
+
+  <div class="status" id="status"></div>
+
+  <script>
+    const GITHUB_USERNAME = "TU_USUARIO";
+    const REPO_NAME = "TU_REPOSITORIO";
+    const FILE_PATH = "data.json";
+    const TOKEN = "TU_TOKEN_PERSONAL";
+
+    const form = document.getElementById('actividadForm');
+    const tableBody = document.querySelector('#actividadTable tbody');
+    const statusDiv = document.getElementById('status');
+
+    async function cargarDatos() {
+      const res = await fetch(`https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`, {
+        headers: {
+          Authorization: `token ${TOKEN}`,
+        },
+      });
+      const data = await res.json();
+      const content = JSON.parse(atob(data.content));
+      content.forEach(row => agregarFila(row));
+    }
+
+    function agregarFila({ fecha, institucion, actividad }) {
+      const row = tableBody.insertRow();
+      row.insertCell(0).textContent = fecha;
+      row.insertCell(1).textContent = institucion;
+      row.insertCell(2).textContent = actividad;
+    }
+
+    async function guardarDatos(nuevoDato) {
+      const url = `https://api.github.com/repos/${GITHUB_USERNAME}/${REPO_NAME}/contents/${FILE_PATH}`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `token ${TOKEN}`,
+        },
+      });
+      const data = await res.json();
+      const contenido = JSON.parse(atob(data.content));
+      contenido.push(nuevoDato);
+
+      const update = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `token ${TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          message: "Agregar nueva actividad",
+          content: btoa(JSON.stringify(contenido, null, 2)),
+          sha: data.sha
+        })
+      });
+
+      if (update.ok) {
+        agregarFila(nuevoDato);
+        statusDiv.textContent = "Datos guardados correctamente.";
+      } else {
+        statusDiv.textContent = "Error al guardar.";
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nuevoDato = {
+        fecha: document.getElementById('fecha').value,
+        institucion: document.getElementById('institucion').value,
+        actividad: document.getElementById('actividad').value,
+      };
+      await guardarDatos(nuevoDato);
+      form.reset();
+    });
+
+    cargarDatos();
+  </script>
+</body>
+</html>
